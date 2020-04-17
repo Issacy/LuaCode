@@ -29,3 +29,47 @@ setfenv = function(target, fenv)
         orgSetFenv(func, fenv)
     end
 end
+
+local function dumping(object, prefix, label, indent, nest, maxNesting, lookupTable, dumpPrint)
+    nest = isnumber(nest) and nest or 1
+    maxNesting = isnumber(maxNesting) and maxNesting or 99
+    lookupTable = lookupTable or {}
+
+    if not istable(object) then
+        dumpPrint(string.format("%s%s = %s",
+            indent, tostring(label), tostring(object)))
+    else
+        local ref = lookupTable[object]
+        if ref ~= nil then
+            dumpPrint(string.format("%s%s = *REF(%s)*",
+                indent, tostring(label), tostring(ref)))
+        else
+            local path = prefix == nil and label or string.format("%s.%s",
+                tostring(prefix), tostring(label))
+            lookupTable[object] = path
+            if nest > maxNesting then
+                dumpPrint(string.format("%s%s = *MAX NESTING*",indent, label))
+            else
+                dumpPrint(string.format("%s%s = {", indent, tostring(label)))
+                for k, v in pairs(object) do
+                    dumping(v, path, k, indent .. "    ", nest+1, maxNesting, lookupTable, dumpPrint)
+                end
+                dumpPrint(string.format("%s}", indent))
+            end
+        end
+    end
+end
+
+dump2String = function(object, label, maxNesting)
+    local arr = {}
+    dumping(object, nil, label or "var", " - ", nil, maxNesting, nil, function(s)
+        table.insert(arr, s)
+    end)
+    return table.concat(arr, "\n")
+end
+
+dump = function(object, label, maxNesting, dumpPrint)
+    (dumpPrint or print)(dump2String(object, label, maxNesting))
+end
+
+cond = function(case, ret1, ret2) if case then return ret1 else return ret2 end end
