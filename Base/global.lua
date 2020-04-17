@@ -73,3 +73,87 @@ dump = function(object, label, maxNesting, dumpPrint)
 end
 
 cond = function(case, ret1, ret2) if case then return ret1 else return ret2 end end
+
+switch = setmetatable({Break = 1, Fall = 2,}, {
+    __index = nullFunc,
+    __newIndex = nullFunc,
+    __call = function(t, dealVal)
+        local switchCase = {}
+        switchCase.cases = {}
+        switchCase.defaultCall = nil
+        function switchCase:case(...)
+            local vals = {}
+            local len = select("#", ...)
+            assert(len >= 2,"case error, params need at least one case and call")
+            local call = select(len, ...)
+            assert(isfunction(call), "case error, the last param must be function")
+            for i = 1, len-1 do
+                vals[select(i, ...)] = true
+            end
+            table.insert(self.cases, {vals = vals, call = call})
+            return self
+        end
+        function switchCase:default(call)
+            assert(isfunction(call), "default error, param must be function")
+            self.defaultCall = call
+            return self
+        end
+        function switchCase:deal(val)
+            if val ~= nil then dealVal = val end
+            local ret = nil
+            local fall = false
+            for _,v in ipairs(self.cases) do
+                if fall or v.vals[dealVal] then
+                    fall = false
+                    ret = v.call() or t.Break
+                    if ret == t.Break then
+                        break
+                    else
+                        fall = true
+                    end
+                end
+            end
+            if ret == nil or fall then
+                local call = self.defaultCall
+                if isfunction(call) then
+                    call()
+                end
+            end
+            return self
+        end
+        return switchCase
+    end,
+})
+
+enum = function()
+    local enums = {}
+    local lastVal = -1
+    local curKey = nil
+    local sw = switch()
+    :case("string", function()
+        lastVal = enums[lastVal]
+    end)
+    :case("function", function()
+        lastVal = lastVal(enums)
+    end)
+    :case("nil", function()
+        lastVal = lastVal+1
+    end)
+    :case("number", nullFunc)
+    :default(function()
+        assert(false, "enum error, value type error")
+    end)
+    local define = function(val)
+        lastVal = val or lastVal
+        sw:deal(type(val))
+        enums[curKey] = lastVal
+        return enums
+    end
+    return setmetatable(enums, {
+        __index = function(self, key)
+            curKey = key
+            return define
+        end,
+        __call = function(self, arg, loopIdx) return next(enums, loopIdx) end,
+    })
+end
