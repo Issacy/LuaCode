@@ -5,18 +5,18 @@ instanceof = function(o, clazz)
     return extendsof(o.__class__, clazz)
 end
 
-extendsof = function(clazz, fatherClazz)
+extendsof = function(clazz, baseClazz)
     local clazz = clazz.__class__
-    local fatherClazz = fatherClazz.__class__
-    local ret = clazz == fatherClazz
+    local baseClazz = baseClazz.__class__
+    local ret = clazz == baseClazz
     while not ret do
-        local ext = clazz.extends
+        local ext = clazz.base
         if ext ~= nil then
             clazz = ext.__class__
         else
             break
         end
-        ret = clazz == fatherClazz
+        ret = clazz == baseClazz
     end
     return ret
 end
@@ -51,7 +51,7 @@ local function searchMember(super, clazz, memberField, fenvClazz, key)
                 break
             else
                 memberField = super.__member__
-                clazz = clazz.__class__.extends
+                clazz = clazz.__class__.base
                 super = rawget(super, "__super__")
             end
         end
@@ -62,10 +62,10 @@ end
 class = attribute(function(this, attrib, className)
     return setmetatable({}, {
         __index = function(t, k)
-            return function(extends, chunk)
+            return function(base, chunk)
                 if not chunk then
-                    chunk = extends
-                    extends = nil
+                    chunk = base
+                    base = nil
                 end
 
                 local clsStaticMember = {
@@ -87,7 +87,7 @@ class = attribute(function(this, attrib, className)
                 }
 
                 local cls = {
-                    extends = extends,
+                    base = base,
                     name = k,
                     static = static,
                     public = {},
@@ -98,7 +98,7 @@ class = attribute(function(this, attrib, className)
                 local clazz = {__class__ = cls}
                 clazz.__instantiate__ = function()
                     local super
-                    if extends then super = extends.__instantiate__() end
+                    if base then super = base.__instantiate__() end
 
                     local oMember = {
                         public = {},
@@ -166,7 +166,7 @@ class = attribute(function(this, attrib, className)
                                 end,
                             })
                         end
-                    elseif k ~= "extends" and k ~= "name" then
+                    elseif k ~= "base" and k ~= "name" then
                         local current = clsMember[k]
                         setmetatable(v, {
                             __index = nullFunc,
