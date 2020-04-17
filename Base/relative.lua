@@ -1,21 +1,22 @@
 require "Base.attribute"
 
 --[[
-    @desc 将当前lua文件增加相对路径引用使用的环境变量
-          在文件顶部使用, 使用形式为relative(...)
-          之后本文件内可以使用import(relative_path)
+    add file's full path and dir into env,
+    better use in top of the file,
+    then can use import(relpath)
 ]]
 relative = attribute(function(this, attrib, file)
     file = file or ""
     attrib.__file__ = file
-    attrib.__relative__ = string.gsub(file, "[^./\\]+$", "")
+    attrib.__dir__ = string.gsub(file, "[^./\\]+$", "")
 end)
 
 --[[
-    @desc 相对路径require, 不支持向上查找".."
+    require file in relative path,
+    dont support back search '..'
 ]]
-import = attribute(function(this, attrib, name)
-    local relative = attrib.__relative__ or ""
+import = attribute(function(this, attrib, relpath)
+    local dir = attrib.__dir__ or ""
     attrib:__remove__()
-    return require(relative .. name)
+    return require(dir .. relpath)
 end)
