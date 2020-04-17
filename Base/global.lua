@@ -1,3 +1,5 @@
+nullFunc = function() end
+
 isfunction = function(o) return type(o) == "function" end
 isnumber = function(o) return type(o) == "number" end
 istable = function(o) return type(o) == "table" end
